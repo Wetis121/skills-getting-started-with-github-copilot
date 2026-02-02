@@ -5,6 +5,35 @@ document.addEventListener("DOMContentLoaded", () => {
   const messageDiv = document.getElementById("message");
 
   // Function to fetch activities from API
+
+// Function to unregister a participant
+async function unregisterParticipant(participantId) {
+  try {
+    const response = await fetch(`/unregister/${participantId}`, { method: 'DELETE' });
+    if (!response.ok) {
+      throw new Error('Failed to unregister participant');
+    }
+    // Optionally, refresh the participant list or update the UI
+    fetchActivities();
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Add delete icons next to each participant
+function addDeleteIcons() {
+  const participantElements = document.querySelectorAll('.participant');
+  participantElements.forEach(participant => {
+    const deleteIcon = document.createElement('span');
+    deleteIcon.innerHTML = '🗑️'; // Unicode for delete icon
+    deleteIcon.style.cursor = 'pointer';
+    deleteIcon.addEventListener('click', () => {
+      const participantId = participant.dataset.id; // Assuming each participant has a data-id attribute
+      unregisterParticipant(participantId);
+    });
+    participant.appendChild(deleteIcon);
+  });
+}
   async function fetchActivities() {
     try {
       const response = await fetch("/activities");
@@ -12,6 +41,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Clear loading message
       activitiesList.innerHTML = "";
+
+      // Reset activity dropdown (keep the placeholder option)
+      activitySelect.innerHTML = "";
+      const placeholderOption = document.createElement("option");
+      placeholderOption.value = "";
+      placeholderOption.textContent = "-- Select an activity --";
+      activitySelect.appendChild(placeholderOption);
 
       // Populate activities list
       Object.entries(activities).forEach(([name, details]) => {
@@ -25,6 +61,12 @@ document.addEventListener("DOMContentLoaded", () => {
           <p>${details.description}</p>
           <p><strong>Schedule:</strong> ${details.schedule}</p>
           <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
+          <div class="participants-section">
+            <strong>Participants (${details.participants.length}/${details.max_participants}):</strong>
+            <ul class="participants-list">
+              ${details.participants.map(p => `<li>${p}</li>`).join('')}
+            </ul>
+          </div>
         `;
 
         activitiesList.appendChild(activityCard);
@@ -62,6 +104,7 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+        await fetchActivities();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
